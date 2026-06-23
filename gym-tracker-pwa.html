@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gym Tracker" />
+  <meta name="theme-color" content="#0e0900" />
+  <meta name="description" content="Ajish Rajan's personal gym tracker – log workouts, track progress, compare weekly & monthly." />
+  <title>Ajish Rajan's Gym Tracker</title>
+
+  <!-- Inline manifest via data URI for true single-file PWA -->
+  <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Ajish%20Rajan%27s%20Gym%20Tracker%22%2C%22short_name%22%3A%22Gym%20Tracker%22%2C%22start_url%22%3A%22%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230e0900%22%2C%22theme_color%22%3A%22%230e0900%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22%2Ficons%2Ficon-192.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.7.3/Recharts.js"></script>
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      background: #0e0900;
+      color: #fde8c0;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    #root {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #1a1200; }
+    ::-webkit-scrollbar-thumb { background: #f59e0b66; border-radius: 4px; }
+
+    .app { min-height: 100vh; background: #0e0900; padding-bottom: 90px; }
+    .topbar { position: sticky; top: 0; z-index: 50; background: #1a1200; border-bottom: 1px solid #3d2800; padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
+    .topbar h1 { margin: 0; font-size: 15px; font-weight: 700; background: linear-gradient(135deg,#f59e0b,#fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2; }
+    .topbar sub { font-size: 9px; color: #8a6a3a; display: block; margin-left: auto; white-space: nowrap; }
+    .bottomnav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: #1a1200; border-top: 1px solid #3d2800; display: flex; padding-bottom: env(safe-area-inset-bottom); }
+    .bnbtn { flex: 1; padding: 9px 2px 7px; border: none; background: none; color: #8a6a3a; font-size: 9px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: color .2s; }
+    .bnbtn.active { color: #f59e0b; }
+    .bnbtn .ico { font-size: 17px; }
+    .page { padding: 12px 14px; }
+    .card { background: #1a1200; border: 1px solid #3d2800; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; color: #8a6a3a; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+    .stat { background: #0e0900; border: 1px solid #3d2800; border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .stat .val { font-size: 20px; font-weight: 700; line-height: 1; color: #f59e0b; }
+    .stat .val2 { color: #fbbf24; } .stat .val3 { color: #fb923c; } .stat .val4 { color: #fcd34d; }
+    .stat .lbl { font-size: 10px; color: #8a6a3a; margin-top: 4px; }
+    .stat .unit { font-size: 9px; color: #4a3518; margin-top: 2px; }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 11px; color: #8a6a3a; margin-bottom: 5px; font-weight: 500; }
+    .field select, .field input { width: 100%; background: #0e0900; border: 1px solid #3d2800; border-radius: 8px; color: #fde8c0; padding: 10px 12px; font-size: 14px; outline: none; appearance: none; -webkit-appearance: none; }
+    .field select:focus, .field input:focus { border-color: #f59e0b; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ex-row { background: #0e0900; border: 1px solid #3d2800; border-radius: 10px; padding: 10px; margin-bottom: 8px; border-left: 3px solid #f59e0b; }
+    .ex-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 6px; align-items: end; }
+    .mini-label { font-size: 9px; color: #8a6a3a; margin-bottom: 3px; }
+    .mini-input { background: #1a1200; border: 1px solid #3d2800; border-radius: 6px; color: #fde8c0; padding: 7px 8px; width: 100%; font-size: 13px; outline: none; text-align: center; }
+    .mini-input:focus { border-color: #f59e0b; }
+    .del-btn { background: #f59e0b22; border: 1px solid #f59e0b44; color: #f87171; border-radius: 6px; padding: 7px 9px; cursor: pointer; font-size: 14px; line-height: 1; }
+    .btn { border: none; border-radius: 8px; padding: 11px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; width: 100%; display: block; text-align: center; }
+    .btn-primary { background: linear-gradient(135deg,#f59e0b,#d97706); color: #0e0900; }
+    .btn-primary:active { opacity: .85; }
+    .btn-secondary { background: #1a1200; border: 1px solid #3d2800; color: #8a6a3a; }
+    .btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .badge { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 99px; font-weight: 700; margin-left: 3px; }
+    .badge-up { background: #4ade8022; color: #4ade80; } .badge-dn { background: #f8717122; color: #f87171; } .badge-eq { background: #4a3518; color: #8a6a3a; }
+    .chart-wrap { margin-top: 8px; width: 100%; overflow: hidden; }
+    .sec-head { font-size: 11px; font-weight: 700; color: #8a6a3a; text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 8px; }
+    .bw-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #3d2800; }
+    .bw-row:last-child { border-bottom: none; }
+    .bw-date { font-size: 12px; color: #8a6a3a; }
+    .bw-val { font-size: 16px; font-weight: 700; color: #fbbf24; }
+    .compare-pill { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .compare-pill button { flex: 1; min-width: 80px; padding: 7px 4px; background: #0e0900; border: 1px solid #3d2800; border-radius: 8px; color: #8a6a3a; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .compare-pill button.active { background: #f59e0b22; border-color: #f59e0b; color: #fbbf24; }
+    .empty { text-align: center; color: #4a3518; padding: 32px 16px; font-size: 13px; }
+    .sku-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .sku-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8a6a3a; }
+    .sku-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .prog-ex-select { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .prog-ex-btn { padding: 5px 10px; background: #0e0900; border: 1px solid #3d2800; border-radius: 20px; font-size: 11px; color: #8a6a3a; cursor: pointer; white-space: nowrap; }
+    .prog-ex-btn.sel { background: #f59e0b22; border-color: #f59e0b; color: #fbbf24; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // ── Inline Service Worker via Blob URL (no sw.js file needed) ──────
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE = 'gym-tracker-v1';
+        const PRECACHE = ['/'];
+        self.addEventListener('install', evt => {
+          evt.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
+          self.skipWaiting();
+        });
+        self.addEventListener('activate', evt => {
+          evt.waitUntil(caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+          ));
+          self.clients.claim();
+        });
+        self.addEventListener('fetch', evt => {
+          const url = new URL(evt.request.url);
+          if (url.hostname === 'cdnjs.cloudflare.com') {
+            evt.respondWith(
+              fetch(evt.request).then(res => {
+                const clone = res.clone();
+                caches.open(CACHE).then(c => c.put(evt.request, clone));
+                return res;
+              }).catch(() => caches.match(evt.request))
+            );
+            return;
+          }
+          evt.respondWith(
+            caches.match(evt.request).then(cached => {
+              if (cached) return cached;
+              return fetch(evt.request).then(res => {
+                if (!res || res.status !== 200 || res.type === 'opaque') return res;
+                const clone = res.clone();
+                caches.open(CACHE).then(c => c.put(evt.request, clone));
+                return res;
+              });
+            })
+          );
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl)
+        .then(() => console.log('SW registered'))
+        .catch(e => console.log('SW error', e));
+    }
+  </script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+    const {
+      BarChart, Bar, LineChart, Line,
+      XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+      ResponsiveContainer
+    } = Recharts;
+
+    // ── Constants ────────────────────────────────────────────────────────
+    const WORKOUT_EXERCISES = {
+      "Day 1 – Chest & Triceps": ["Barbell Bench Press","Incline Dumbbell Press","Cable Chest Flyes","Chest Press Machine","Overhead Cable Extension","Skull Crusher","Dumbbell Extension","Machine Fly","Plate-Loaded Chest Press","Tricep Dips","Tricep Rope Pushdowns","Cardio"],
+      "Day 2 – Legs": ["Barbell Squats","Leg Press","Romanian Deadlifts","Leg Curls","Leg Extension","Dumbbell Front Squat","Lunges","Standing Calf Raise","Seated Machine Calf Raise","Glute Bridges","Abductors","StairMaster"],
+      "Day 3 – Core": ["Woodchops","Ab Coaster","Hanging Leg Raises","Cable Crunches","Plank Hold","Russian Twists","Bicycle Crunches","Abs Rollout","Lying Leg Raises","Cardio"],
+      "Day 4 – Recovery": ["Foam Rolling","Light Stretching","Yoga","Meditation","Walk"],
+      "Day 5 – Back & Biceps": ["Deadlifts","Lat Pulldowns","Barbell Rows","Bicep Curls","Hammer Curls","Cable Bicep Curls","Seated Cable Row","T-Bar Row","Preacher Curl","Standing Barbell Curls","Cardio"],
+      "Day 6 – Shoulders": ["Military Press","Lateral Raises","Front Raises","Face Pull","Rear Delt Flyes","Dumbbell Shrugs","Arnold Press","Seated T-Bar Raise","Upright Row","Cardio"],
+      "Day 7 – Recovery": ["Foam Rolling","Light Stretching","Yoga","Meditation","Walk"]
+    };
+    const DAY_KEYS = Object.keys(WORKOUT_EXERCISES);
+    const LINE_PALETTE = ["#f59e0b","#fb923c","#fbbf24","#fcd34d","#d97706","#fdba74","#fef08a","#f97316"];
+    const TABS = [
+      {id:"log",    label:"📋 Log"},
+      {id:"weekly", label:"📅 Weekly"},
+      {id:"monthly",label:"📈 Monthly"},
+      {id:"progress",label:"🏆 Progress"},
+      {id:"body",   label:"⚖️ Weight"},
+    ];
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    const load = (k,d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+    const save = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const isoDate = d => d.toISOString().split("T")[0];
+    const today = () => isoDate(new Date());
+    const mondayOf = iso => { const d = new Date(iso); d.setDate(d.getDate() - ((d.getDay()||7)-1)); return isoDate(d); };
+    const addDays = (iso,n) => { const d = new Date(iso); d.setDate(d.getDate()+n); return isoDate(d); };
+    const monthKey = iso => iso.slice(0,7);
+    const pct = (a,b) => b === 0 ? null : (((a-b)/b)*100).toFixed(1);
+
+    const Badge = ({a,b}) => {
+      if (b===null||b===undefined||b===0) return null;
+      const p = pct(a,b); if (p===null) return null;
+      const cls = p>0?"badge-up":p<0?"badge-dn":"badge-eq";
+      return <span className={`badge ${cls}`}>{p>0?"▲":p<0?"▼":"="}{Math.abs(p)}%</span>;
+    };
+
+    const CT = ({active,payload,label}) => {
+      if (!active||!payload?.length) return null;
+      return (
+        <div style={{background:"#1a1200",border:"1px solid #3d2800",borderRadius:8,padding:"8px 12px",fontSize:12,maxWidth:200}}>
+          <p style={{margin:"0 0 4px",color:"#8a6a3a",fontSize:11}}>{label}</p>
+          {payload.map((p,i) => (
+            <p key={i} style={{margin:"2px 0",color:p.color,fontSize:12}}>
+              <span style={{display:"inline-block",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",verticalAlign:"bottom"}}>{p.name}</span>: <b>{p.value}</b>
+            </p>
+          ))}
+        </div>
+      );
+    };
+
+    // ── App ──────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab]                     = useState("log");
+      const [logDate, setLogDate]             = useState(today());
+      const [logDay, setLogDay]               = useState(DAY_KEYS[0]);
+      const [entries, setEntries]             = useState([]);
+      const [allLogs, setAllLogs]             = useState(() => load("gtp_logs", {}));
+      const [bodyWeights, setBodyWeights]     = useState(() => load("gtp_bw", {}));
+      const [bwInput, setBwInput]             = useState("");
+      const [bwDate, setBwDate]               = useState(today());
+      const [weeklyDayFilter, setWeeklyDayFilter]   = useState(DAY_KEYS[0]);
+      const [monthlyDayFilter, setMonthlyDayFilter] = useState(DAY_KEYS[0]);
+      const [progressDayFilter, setProgressDayFilter] = useState(DAY_KEYS[0]);
+      const [metric, setMetric]               = useState("weight");
+      const [progressMetric, setProgressMetric] = useState("weight");
+      const [selectedExercises, setSelectedExercises] = useState([]);
+
+      useEffect(() => save("gtp_logs", allLogs), [allLogs]);
+      useEffect(() => save("gtp_bw", bodyWeights), [bodyWeights]);
+      useEffect(() => {
+        const k = `${logDate}||${logDay}`;
+        setEntries(allLogs[k] ? JSON.parse(JSON.stringify(allLogs[k])) : []);
+      }, [logDate, logDay]);
+      useEffect(() => setSelectedExercises([]), [progressDayFilter, progressMetric]);
+
+      const uid = () => Math.random().toString(36).slice(2,8);
+
+      const addEx = () => {
+        const exList = WORKOUT_EXERCISES[logDay] || [];
+        const used = entries.map(e => e.exercise);
+        const next = exList.find(e => !used.includes(e)) || exList[0] || "Exercise";
+        setEntries(p => [...p, {id:uid(), exercise:next, sets:3, reps:10, weight:0, notes:""}]);
+      };
+      const updEx = (id,f,v) => setEntries(p => p.map(e => e.id===id ? {...e,[f]:v} : e));
+      const delEx = id => setEntries(p => p.filter(e => e.id!==id));
+      const saveLog = () => {
+        const k = `${logDate}||${logDay}`;
+        setAllLogs(p => { const n = {...p,[k]:entries}; save("gtp_logs",n); return n; });
+        alert("✅ Saved!");
+      };
+      const loadLog = () => {
+        const k = `${logDate}||${logDay}`;
+        setEntries(allLogs[k] ? JSON.parse(JSON.stringify(allLogs[k])) : []);
+      };
+
+      const getLogForWeek = useCallback((mondayIso, dayKey) => {
+        const days = Array.from({length:7},(_,i) => addDays(mondayIso,i));
+        for (const d of [...days].reverse()) {
+          const k = `${d}||${dayKey}`;
+          if (allLogs[k]?.length) return {date:d, entries:allLogs[k]};
+        }
+        return null;
+      }, [allLogs]);
+
+      const getLogForMonth = useCallback((mKey, dayKey) => {
+        const matches = Object.entries(allLogs)
+          .filter(([k]) => k.endsWith(`||${dayKey}`) && k.startsWith(mKey))
+          .sort((a,b) => b[0].localeCompare(a[0]));
+        if (!matches.length) return null;
+        return {date: matches[0][0].split("||")[0], entries: matches[0][1]};
+      }, [allLogs]);
+
+      const getAllTimeExerciseData = useCallback((dayKey, metricField) => {
+        const sessions = Object.entries(allLogs)
+          .filter(([k]) => k.endsWith(`||${dayKey}`))
+          .map(([k,v]) => ({date: k.split("||")[0], entries: v}))
+          .sort((a,b) => a.date.localeCompare(b.date));
+        if (!sessions.length) return {dates:[], exerciseNames:[]};
+        const allExNames = [...new Set(sessions.flatMap(s => s.entries.map(e => e.exercise)))];
+        const byDate = sessions.map(s => {
+          const row = {date: s.date.slice(5)};
+          allExNames.forEach(ex => {
+            const found = s.entries.find(e => e.exercise===ex);
+            row[ex] = found ? (+found[metricField]||0) : null;
+          });
+          return row;
+        });
+        return {dates: byDate, exerciseNames: allExNames};
+      }, [allLogs]);
+
+      const thisMonday   = mondayOf(today());
+      const lastMonday   = addDays(thisMonday, -7);
+      const thisMonthK   = monthKey(today());
+      const lastMonthK   = (() => { const d=new Date(); d.setMonth(d.getMonth()-1); return monthKey(isoDate(d)); })();
+
+      const thisWeekLog  = getLogForWeek(thisMonday, weeklyDayFilter);
+      const lastWeekLog  = getLogForWeek(lastMonday, weeklyDayFilter);
+      const thisMonthLog = getLogForMonth(thisMonthK, monthlyDayFilter);
+      const lastMonthLog = getLogForMonth(lastMonthK, monthlyDayFilter);
+
+      const buildSkuData = (thisEnts, lastEnts, thisKey, lastKey, mf) => {
+        const tMap={}, lMap={};
+        (thisEnts||[]).forEach(e => { tMap[e.exercise] = +e[mf]||0; });
+        (lastEnts||[]).forEach(e => { lMap[e.exercise] = +e[mf]||0; });
+        const all = [...new Set([...Object.keys(tMap),...Object.keys(lMap)])];
+        return all.map(ex => ({
+          name: ex.length>14 ? ex.slice(0,13)+"…" : ex,
+          fullName: ex,
+          [thisKey]: tMap[ex]||0,
+          [lastKey]: lMap[ex]||0,
+        }));
+      };
+
+      const weeklyData  = buildSkuData(thisWeekLog?.entries, lastWeekLog?.entries,  "This Week",  "Last Week",  metric);
+      const monthlyData = buildSkuData(thisMonthLog?.entries, lastMonthLog?.entries, "This Month", "Last Month", metric);
+      const skuTotals   = (ents,f) => (ents||[]).reduce((s,e) => s+(+e[f]||0), 0);
+      const metricLabel = m => m==="weight"?"kg":m==="sets"?"sets":"reps";
+
+      const {dates:progressData=[], exerciseNames:allExNames=[]} = getAllTimeExerciseData(progressDayFilter, progressMetric);
+      const toggleExercise = ex => setSelectedExercises(p => p.includes(ex) ? p.filter(e=>e!==ex) : [...p,ex]);
+      const activeExercises = selectedExercises.length>0 ? selectedExercises : allExNames.slice(0,5);
+
+      const weekDays     = Array.from({length:7},(_,i) => addDays(thisMonday,i));
+      const weekBW       = weekDays.map(d => ({date:d, day:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][new Date(d).getDay()===0?6:new Date(d).getDay()-1], kg:bodyWeights[d]||null}));
+      const lastWeekBWArr = Array.from({length:7},(_,i) => addDays(lastMonday,i)).map(d => bodyWeights[d]||null).filter(Boolean);
+      const avgThisWeekBW = (() => { const v=weekBW.map(w=>w.kg).filter(Boolean); return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null; })();
+      const avgLastWeekBW = lastWeekBWArr.length ? +(lastWeekBWArr.reduce((a,b)=>a+b,0)/lastWeekBWArr.length).toFixed(1) : null;
+      const bwChartData   = Object.entries(bodyWeights).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,kg])=>({date:d.slice(5),kg}));
+      const saveBW = () => { if (!bwInput) return; setBodyWeights(p => { const n={...p,[bwDate]:+bwInput}; save("gtp_bw",n); return n; }); setBwInput(""); };
+
+      // ── Render ──────────────────────────────────────────────────────────
+      return (
+        <div className="app">
+          {/* Top bar */}
+          <div className="topbar">
+            <div><h1>Ajish Rajan's Gym Tracker</h1></div>
+            <sub>🔥 Pro Edition</sub>
+          </div>
+
+          {/* ── LOG ──────────────────────────────────────────────────── */}
+          {tab==="log" && (
+            <div className="page">
+              <div className="card">
+                <div className="row2">
+                  <div className="field"><label>Date</label><input type="date" value={logDate} onChange={e=>setLogDate(e.target.value)}/></div>
+                  <div className="field"><label>Day</label>
+                    <select value={logDay} onChange={e=>setLogDay(e.target.value)}>
+                      {DAY_KEYS.map(d=><option key={d}>{d}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="btnrow">
+                  <button className="btn btn-secondary" onClick={loadLog}>📂 Load</button>
+                  <button className="btn btn-primary" onClick={addEx}>➕ Add Exercise</button>
+                </div>
+              </div>
+              {entries.length===0
+                ? <div className="empty">No exercises yet.<br/>Tap ➕ to start! 🔥</div>
+                : entries.map(ex => (
+                  <div key={ex.id} className="ex-row">
+                    <div style={{marginBottom:8}}>
+                      <select style={{background:"transparent",border:"none",color:"#fbbf24",fontWeight:600,fontSize:13,width:"100%",outline:"none",padding:0}}
+                        value={ex.exercise} onChange={e=>updEx(ex.id,"exercise",e.target.value)}>
+                        {(WORKOUT_EXERCISES[logDay]||[]).map(e=><option key={e} style={{background:"#1a1200"}}>{e}</option>)}
+                      </select>
+                    </div>
+                    <div className="ex-inputs">
+                      <div><div className="mini-label">Sets</div><input className="mini-input" type="number" value={ex.sets} onChange={e=>updEx(ex.id,"sets",e.target.value)}/></div>
+                      <div><div className="mini-label">Reps</div><input className="mini-input" type="number" value={ex.reps} onChange={e=>updEx(ex.id,"reps",e.target.value)}/></div>
+                      <div><div className="mini-label">kg</div><input className="mini-input" type="number" value={ex.weight} onChange={e=>updEx(ex.id,"weight",e.target.value)}/></div>
+                      <button className="del-btn" onClick={()=>delEx(ex.id)}>🗑</button>
+                    </div>
+                  </div>
+                ))
+              }
+              {entries.length>0 && <button className="btn btn-primary" style={{marginTop:4}} onClick={saveLog}>💾 Save Workout</button>}
+            </div>
+          )}
+
+          {/* ── WEEKLY ───────────────────────────────────────────────── */}
+          {tab==="weekly" && (
+            <div className="page">
+              <div className="field"><label>Workout Day</label>
+                <select value={weeklyDayFilter} onChange={e=>setWeeklyDayFilter(e.target.value)}>
+                  {DAY_KEYS.map(d=><option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <p className="sec-head">Total – This Week vs Last Week</p>
+              <div className="stat-grid">
+                <div className="stat"><div className="val">{skuTotals(thisWeekLog?.entries,"sets")}</div><div className="lbl">Sets <Badge a={skuTotals(thisWeekLog?.entries,"sets")} b={skuTotals(lastWeekLog?.entries,"sets")}/></div><div className="unit">count</div></div>
+                <div className="stat"><div className="val val2">{skuTotals(thisWeekLog?.entries,"reps")}</div><div className="lbl">Reps <Badge a={skuTotals(thisWeekLog?.entries,"reps")} b={skuTotals(lastWeekLog?.entries,"reps")}/></div><div className="unit">count</div></div>
+                <div className="stat"><div className="val val3">{skuTotals(thisWeekLog?.entries,"weight")}</div><div className="lbl">kg <Badge a={skuTotals(thisWeekLog?.entries,"weight")} b={skuTotals(lastWeekLog?.entries,"weight")}/></div><div className="unit">kg</div></div>
+              </div>
+              <div className="compare-pill">
+                {["weight","sets","reps"].map(m=>(
+                  <button key={m} className={metric===m?"active":""} onClick={()=>setMetric(m)}>
+                    {m==="weight"?"⚖️ kg":m==="sets"?"📦 Sets":"🔁 Reps"}
+                  </button>
+                ))}
+              </div>
+              {weeklyData.length===0
+                ? <div className="empty">No data for this workout yet.</div>
+                : <div className="card">
+                    <div className="card-title">Per-Exercise: This Week vs Last Week ({metricLabel(metric)})</div>
+                    <div className="chart-wrap">
+                      <ResponsiveContainer width="100%" height={Math.max(260,weeklyData.length*46)}>
+                        <BarChart data={weeklyData} layout="vertical" margin={{top:4,right:8,left:4,bottom:4}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#3d2800" horizontal={false}/>
+                          <XAxis type="number" tick={{fill:"#8a6a3a",fontSize:10}} tickLine={false} axisLine={false}/>
+                          <YAxis type="category" dataKey="name" tick={{fill:"#fde8c0",fontSize:11}} width={110} tickLine={false} axisLine={false}/>
+                          <Tooltip content={<CT/>}/>
+                          <Legend wrapperStyle={{fontSize:11,color:"#8a6a3a"}}/>
+                          <Bar dataKey="This Week" fill="#f59e0b" radius={[0,4,4,0]} barSize={12}/>
+                          <Bar dataKey="Last Week" fill="#3d2800" radius={[0,4,4,0]} barSize={12}/>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+              }
+              {weeklyData.length>0 && (
+                <div className="card">
+                  <div className="card-title">Detail ({metricLabel(metric)})</div>
+                  {weeklyData.map((row,i) => (
+                    <div key={i} style={{borderBottom:"1px solid #3d2800",padding:"9px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:12,color:"#fbbf24",flex:1,paddingRight:8}}>{row.fullName}</span>
+                      <div style={{display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#f59e0b"}}>{row["This Week"]}</span>
+                        <span style={{fontSize:11,color:"#4a3518"}}>vs</span>
+                        <span style={{fontSize:13,fontWeight:700,color:"#4a3518"}}>{row["Last Week"]}</span>
+                        <Badge a={row["This Week"]} b={row["Last Week"]}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{display:"flex",gap:8}}>
+                {thisWeekLog && <div style={{flex:1,background:"#0e0900",border:"1px solid #3d2800",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8a6a3a",marginBottom:3,textTransform:"uppercase"}}>This Week</div>
+                  <div style={{fontSize:12,color:"#fbbf24",fontWeight:600}}>{thisWeekLog.date}</div>
+                  <div style={{fontSize:11,color:"#8a6a3a"}}>{thisWeekLog.entries.length} exercises</div>
+                </div>}
+                {lastWeekLog && <div style={{flex:1,background:"#0e0900",border:"1px solid #3d2800",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8a6a3a",marginBottom:3,textTransform:"uppercase"}}>Last Week</div>
+                  <div style={{fontSize:12,color:"#4a3518",fontWeight:600}}>{lastWeekLog.date}</div>
+                  <div style={{fontSize:11,color:"#8a6a3a"}}>{lastWeekLog.entries.length} exercises</div>
+                </div>}
+              </div>
+            </div>
+          )}
+
+          {/* ── MONTHLY ──────────────────────────────────────────────── */}
+          {tab==="monthly" && (
+            <div className="page">
+              <div className="field"><label>Workout Day</label>
+                <select value={monthlyDayFilter} onChange={e=>setMonthlyDayFilter(e.target.value)}>
+                  {DAY_KEYS.map(d=><option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <p className="sec-head">Total – This Month vs Last Month</p>
+              <div className="stat-grid">
+                <div className="stat"><div className="val">{skuTotals(thisMonthLog?.entries,"sets")}</div><div className="lbl">Sets <Badge a={skuTotals(thisMonthLog?.entries,"sets")} b={skuTotals(lastMonthLog?.entries,"sets")}/></div><div className="unit">count</div></div>
+                <div className="stat"><div className="val val2">{skuTotals(thisMonthLog?.entries,"reps")}</div><div className="lbl">Reps <Badge a={skuTotals(thisMonthLog?.entries,"reps")} b={skuTotals(lastMonthLog?.entries,"reps")}/></div><div className="unit">count</div></div>
+                <div className="stat"><div className="val val3">{skuTotals(thisMonthLog?.entries,"weight")}</div><div className="lbl">kg <Badge a={skuTotals(thisMonthLog?.entries,"weight")} b={skuTotals(lastMonthLog?.entries,"weight")}/></div><div className="unit">kg</div></div>
+              </div>
+              <div className="compare-pill">
+                {["weight","sets","reps"].map(m=>(
+                  <button key={m} className={metric===m?"active":""} onClick={()=>setMetric(m)}>
+                    {m==="weight"?"⚖️ kg":m==="sets"?"📦 Sets":"🔁 Reps"}
+                  </button>
+                ))}
+              </div>
+              {monthlyData.length===0
+                ? <div className="empty">No data for this workout yet.</div>
+                : <div className="card">
+                    <div className="card-title">Per-Exercise: This Month vs Last Month ({metricLabel(metric)})</div>
+                    <div className="chart-wrap">
+                      <ResponsiveContainer width="100%" height={Math.max(260,monthlyData.length*46)}>
+                        <BarChart data={monthlyData} layout="vertical" margin={{top:4,right:8,left:4,bottom:4}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#3d2800" horizontal={false}/>
+                          <XAxis type="number" tick={{fill:"#8a6a3a",fontSize:10}} tickLine={false} axisLine={false}/>
+                          <YAxis type="category" dataKey="name" tick={{fill:"#fde8c0",fontSize:11}} width={110} tickLine={false} axisLine={false}/>
+                          <Tooltip content={<CT/>}/>
+                          <Legend wrapperStyle={{fontSize:11,color:"#8a6a3a"}}/>
+                          <Bar dataKey="This Month" fill="#fb923c" radius={[0,4,4,0]} barSize={12}/>
+                          <Bar dataKey="Last Month" fill="#3d2800" radius={[0,4,4,0]} barSize={12}/>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+              }
+              {monthlyData.length>0 && (
+                <div className="card">
+                  <div className="card-title">Detail ({metricLabel(metric)})</div>
+                  {monthlyData.map((row,i) => (
+                    <div key={i} style={{borderBottom:"1px solid #3d2800",padding:"9px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:12,color:"#fbbf24",flex:1,paddingRight:8}}>{row.fullName}</span>
+                      <div style={{display:"flex",gap:10,alignItems:"center",flexShrink:0}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#fb923c"}}>{row["This Month"]}</span>
+                        <span style={{fontSize:11,color:"#4a3518"}}>vs</span>
+                        <span style={{fontSize:13,fontWeight:700,color:"#4a3518"}}>{row["Last Month"]}</span>
+                        <Badge a={row["This Month"]} b={row["Last Month"]}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{display:"flex",gap:8}}>
+                {thisMonthLog && <div style={{flex:1,background:"#0e0900",border:"1px solid #3d2800",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8a6a3a",marginBottom:3,textTransform:"uppercase"}}>This Month</div>
+                  <div style={{fontSize:12,color:"#fbbf24",fontWeight:600}}>{thisMonthLog.date}</div>
+                  <div style={{fontSize:11,color:"#8a6a3a"}}>{thisMonthLog.entries.length} exercises</div>
+                </div>}
+                {lastMonthLog && <div style={{flex:1,background:"#0e0900",border:"1px solid #3d2800",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:"#8a6a3a",marginBottom:3,textTransform:"uppercase"}}>Last Month</div>
+                  <div style={{fontSize:12,color:"#4a3518",fontWeight:600}}>{lastMonthLog.date}</div>
+                  <div style={{fontSize:11,color:"#8a6a3a"}}>{lastMonthLog.entries.length} exercises</div>
+                </div>}
+              </div>
+            </div>
+          )}
+
+          {/* ── PROGRESS ─────────────────────────────────────────────── */}
+          {tab==="progress" && (
+            <div className="page">
+              <div className="row2">
+                <div className="field"><label>Workout Day</label>
+                  <select value={progressDayFilter} onChange={e=>setProgressDayFilter(e.target.value)}>
+                    {DAY_KEYS.map(d=><option key={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label>Metric</label>
+                  <select value={progressMetric} onChange={e=>setProgressMetric(e.target.value)}>
+                    <option value="weight">⚖️ Weight (kg)</option>
+                    <option value="sets">📦 Sets</option>
+                    <option value="reps">🔁 Reps</option>
+                  </select>
+                </div>
+              </div>
+              {progressData.length===0
+                ? <div className="empty">No sessions logged for this workout yet.<br/>Start logging to see progress curves! 🔥</div>
+                : (
+                  <>
+                    <p className="sec-head">Select Exercises</p>
+                    <div className="prog-ex-select">
+                      <button className={`prog-ex-btn ${selectedExercises.length===0?"sel":""}`}
+                        onClick={()=>setSelectedExercises([])}
+                        style={{background:selectedExercises.length===0?"#f59e0b22":"#0e0900",borderColor:selectedExercises.length===0?"#f59e0b":"#3d2800",color:selectedExercises.length===0?"#fbbf24":"#8a6a3a"}}>
+                        All (top 5)
+                      </button>
+                      {allExNames.map((ex,i) => (
+                        <button key={ex} className={`prog-ex-btn ${selectedExercises.includes(ex)?"sel":""}`}
+                          onClick={()=>toggleExercise(ex)}
+                          style={{borderColor:selectedExercises.includes(ex)?LINE_PALETTE[i%LINE_PALETTE.length]:"#3d2800",color:selectedExercises.includes(ex)?LINE_PALETTE[i%LINE_PALETTE.length]:"#8a6a3a",background:selectedExercises.includes(ex)?`${LINE_PALETTE[i%LINE_PALETTE.length]}18`:"#0e0900"}}>
+                          {ex}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="sec-head">Overall Summary – All Sessions</p>
+                    <div className="stat-grid">
+                      <div className="stat"><div className="val">{progressData.length}</div><div className="lbl">Sessions</div><div className="unit">logged</div></div>
+                      <div className="stat"><div className="val val2">{activeExercises.length}</div><div className="lbl">Exercises</div><div className="unit">shown</div></div>
+                      <div className="stat">
+                        <div className="val val3">{(()=>{
+                          const last=progressData[progressData.length-1], first=progressData[0];
+                          const vals=activeExercises.map(ex=>({first:first[ex]??0,last:last[ex]??0})).filter(v=>v.first>0);
+                          if (!vals.length) return "—";
+                          const avg=vals.reduce((s,v)=>s+((v.last-v.first)/v.first*100),0)/vals.length;
+                          return (avg>=0?"▲":"▼")+Math.abs(avg).toFixed(0)+"%";
+                        })()}</div>
+                        <div className="lbl">Avg Growth</div><div className="unit">first→last</div>
+                      </div>
+                    </div>
+                    <div className="card">
+                      <div className="card-title">All-Time Progress – {metricLabel(progressMetric)} per Exercise</div>
+                      <div className="sku-legend">
+                        {activeExercises.map((ex,i) => {
+                          const idx = allExNames.indexOf(ex);
+                          return (
+                            <div key={ex} className="sku-legend-item">
+                              <div className="sku-legend-dot" style={{background:LINE_PALETTE[idx%LINE_PALETTE.length]}}/>
+                              <span style={{maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ex}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="chart-wrap">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={progressData} margin={{top:4,right:8,left:-20,bottom:4}}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#3d2800"/>
+                            <XAxis dataKey="date" tick={{fill:"#8a6a3a",fontSize:10}} interval="preserveStartEnd" tickLine={false}/>
+                            <YAxis tick={{fill:"#8a6a3a",fontSize:10}} tickLine={false} axisLine={false}/>
+                            <Tooltip content={<CT/>}/>
+                            {activeExercises.map((ex,i) => {
+                              const idx = allExNames.indexOf(ex);
+                              return <Line key={ex} type="monotone" dataKey={ex} stroke={LINE_PALETTE[idx%LINE_PALETTE.length]} strokeWidth={2} dot={{r:3,fill:"#0e0900",strokeWidth:2}} activeDot={{r:5}} connectNulls={true}/>;
+                            })}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    <p className="sec-head">Exercise Breakdown</p>
+                    {activeExercises.map((ex,i) => {
+                      const idx = allExNames.indexOf(ex);
+                      const vals = progressData.map(d=>d[ex]).filter(v=>v!==null&&v!==undefined&&v>0);
+                      if (!vals.length) return null;
+                      const first=vals[0], last=vals[vals.length-1], max=Math.max(...vals);
+                      const change = pct(last,first);
+                      return (
+                        <div key={ex} className="card" style={{borderLeft:`3px solid ${LINE_PALETTE[idx%LINE_PALETTE.length]}`,padding:"10px 14px"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                            <span style={{fontSize:13,fontWeight:700,color:LINE_PALETTE[idx%LINE_PALETTE.length],flex:1,paddingRight:8}}>{ex}</span>
+                            {change!==null && <span className={`badge ${+change>=0?"badge-up":"badge-dn"}`}>{+change>=0?"▲":"▼"}{Math.abs(change)}%</span>}
+                          </div>
+                          <div style={{display:"flex"}}>
+                            {[["First",first,"#8a6a3a"],["Latest",last,LINE_PALETTE[idx%LINE_PALETTE.length]],["Peak",max,"#fcd34d"]].map(([lbl,val,col])=>(
+                              <div key={lbl} style={{flex:1,textAlign:"center",borderRight:"1px solid #3d2800"}}>
+                                <div style={{fontSize:18,fontWeight:700,color:col}}>{val}</div>
+                                <div style={{fontSize:9,color:"#8a6a3a",marginTop:2}}>{lbl} ({metricLabel(progressMetric)})</div>
+                              </div>
+                            ))}
+                          </div>
+                          {vals.length>1 && (
+                            <div style={{marginTop:8}}>
+                              <ResponsiveContainer width="100%" height={60}>
+                                <LineChart data={progressData.filter(d=>d[ex]!==null)} margin={{top:2,right:2,left:2,bottom:2}}>
+                                  <Line type="monotone" dataKey={ex} stroke={LINE_PALETTE[idx%LINE_PALETTE.length]} strokeWidth={2} dot={false} connectNulls/>
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )
+              }
+            </div>
+          )}
+
+          {/* ── BODY WEIGHT ──────────────────────────────────────────── */}
+          {tab==="body" && (
+            <div className="page">
+              <div className="card">
+                <div className="card-title">Log Body Weight</div>
+                <div className="row2">
+                  <div className="field"><label>Date</label><input type="date" value={bwDate} onChange={e=>setBwDate(e.target.value)}/></div>
+                  <div className="field"><label>Weight (kg)</label><input type="number" placeholder="e.g. 78.5" value={bwInput} onChange={e=>setBwInput(e.target.value)}/></div>
+                </div>
+                <button className="btn btn-primary" onClick={saveBW}>💾 Save</button>
+              </div>
+              <p className="sec-head">This Week vs Last Week</p>
+              <div className="stat-grid" style={{gridTemplateColumns:"1fr 1fr"}}>
+                <div className="stat"><div className="val">{avgThisWeekBW??"—"}</div><div className="lbl">This Week <Badge a={avgThisWeekBW} b={avgLastWeekBW}/></div><div className="unit">avg kg</div></div>
+                <div className="stat"><div className="val" style={{color:"#4a3518"}}>{avgLastWeekBW??"—"}</div><div className="lbl">Last Week</div><div className="unit">avg kg</div></div>
+              </div>
+              <div className="card">
+                <div className="card-title">Daily – This Week</div>
+                {weekBW.map(w => (
+                  <div key={w.date} className="bw-row">
+                    <span className="bw-date">{w.day} <span style={{color:"#4a3518",fontSize:11}}>{w.date}</span></span>
+                    <span className="bw-val">{w.kg ? `${w.kg} kg` : <span style={{color:"#4a3518"}}>—</span>}</span>
+                  </div>
+                ))}
+              </div>
+              {bwChartData.length>0 && (
+                <div className="card">
+                  <div className="card-title">30-Day Weight Trend</div>
+                  <div className="chart-wrap">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={bwChartData} margin={{top:4,right:4,left:-20,bottom:0}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#3d2800"/>
+                        <XAxis dataKey="date" tick={{fill:"#8a6a3a",fontSize:10}} interval="preserveStartEnd"/>
+                        <YAxis tick={{fill:"#8a6a3a",fontSize:11}} domain={["auto","auto"]}/>
+                        <Tooltip content={<CT/>}/>
+                        <Line type="monotone" dataKey="kg" stroke="#fbbf24" strokeWidth={2} dot={{r:3,fill:"#0e0900",strokeWidth:2}} activeDot={{r:5}} name="Weight (kg)"/>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+              <p className="sec-head">Recent Entries</p>
+              <div className="card">
+                {Object.entries(bodyWeights).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10).map(([d,kg])=>(
+                  <div key={d} className="bw-row"><span className="bw-date">{d}</span><span className="bw-val">{kg} kg</span></div>
+                ))}
+                {Object.keys(bodyWeights).length===0 && <div className="empty">No entries yet.</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom nav */}
+          <div className="bottomnav">
+            {TABS.map(t => (
+              <button key={t.id} className={`bnbtn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
+                <span className="ico">{t.label.split(" ")[0]}</span>
+                <span>{t.label.split(" ").slice(1).join(" ")}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
